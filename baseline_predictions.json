@@ -1,0 +1,26 @@
+{
+  "sample_images\\Screenshot 2026-09-03 171302.png": {
+    "class": "web site",
+    "confidence": 0.9523084759712219
+  },
+  "sample_images\\Screenshot 2026-09-09 034707.png": {
+    "class": "red wine",
+    "confidence": 0.5303637385368347
+  },
+  "sample_images\\Screenshot 2026-09-09 034741.png": {
+    "class": "dining table",
+    "confidence": 0.9410119652748108
+  },
+  "sample_images\\Screenshot 2026-09-09 034804.png": {
+    "class": "golden retriever",
+    "confidence": 0.9946565628051758
+  },
+  "sample_images\\Screenshot 2026-09-09 034835.png": {
+    "class": "Egyptian cat",
+    "confidence": 0.5329477787017822
+  },
+  "sample_images\\image.png": {
+    "class": "Persian cat",
+    "confidence": 0.2701779305934906
+  }
+}
