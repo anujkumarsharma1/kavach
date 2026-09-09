@@ -35,12 +35,26 @@ def extract_payload(weights: np.ndarray, num_bytes: int) -> bytes:
     return bits_to_bytes(extract_bits(weights, num_bytes * 8))
 
 
+def get_param_by_name(model, name: str):
+    """
+    Walk a dotted parameter name like 'layer4.1.conv2.weight' — the exact
+    names scan_model reports via named_parameters() — down to the actual
+    nn.Parameter. Lets tamper.py and disarm.py address whatever layer a
+    scan flagged, generically, instead of hardcoding one layer.
+    """
+    module = model
+    parts = name.split(".")
+    for part in parts[:-1]:
+        module = module[int(part)] if part.isdigit() else getattr(module, part)
+    return getattr(module, parts[-1])
+
+
 if __name__ == "__main__":
     # Self-test: round-trip a string through fake "weights" before you
     # trust this on the real model.
     test_weights = np.random.default_rng(0).standard_normal(10000).astype(np.float32)
     secret = b"HELLO KAVACH"
-    tampered = embed_payload(test_weights, secret) 
+    tampered = embed_payload(test_weights, secret)
     recovered = extract_payload(tampered, len(secret))
     assert recovered == secret, f"Round-trip FAILED: got {recovered!r}"
     max_shift = np.abs(tampered - test_weights).max()
