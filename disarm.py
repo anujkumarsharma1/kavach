@@ -7,7 +7,6 @@ import numpy as np
 import torch
 import torchvision
 
-from payload import PAYLOAD
 from scan import scan_model
 from stego import get_param_by_name
 
@@ -40,14 +39,14 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load("tampered_model.pt", weights_only=True))
     model.eval()
 
-    findings = scan_model(model, payload_len_bytes=len(PAYLOAD))
+    findings, _ = scan_model(model)
     disarm_model(model, findings)
 
     torch.save(model.state_dict(), "disarmed_model.pt")
     print(f"Disarmed {len({f['layer'] for f in findings})} flagged layer(s).")
     print("Saved disarmed_model.pt.")
 
-    reverify = scan_model(model, payload_len_bytes=len(PAYLOAD))
+    reverify, _ = scan_model(model)
     if reverify:
         print("WARNING: payload still detectable after disarm — something's wrong.")
         for f in reverify:

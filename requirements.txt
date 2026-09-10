@@ -5,3 +5,15 @@ streamlit==1.63.0
 pillow==12.3.0
 torch==2.14.0+cpu
 torchvision==0.29.0+cpu
+
+# Install torch/torchvision separately first (CPU-only build, much smaller/faster):
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+numpy
+streamlit
+pillow
+pandas
+
+# OPTIONAL -- only if you're doing the chest X-ray demo model (models_zoo.py).
+# Skip these two lines entirely if you're staying on ResNet18.
+# torchxrayvision
+# scikit-image

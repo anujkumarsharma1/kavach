@@ -1,103 +1,46 @@
-import glob
+import copy
+import os
 
+import pandas as pd
 import streamlit as st
 import torch
-import torchvision
-from PIL import Image
 
-from disarm import disarm_model
-from payload import PAYLOAD
-from scan import scan_model
-from tamper import tamper_model
+from disarm import disarm_layer
+from models_zoo import MODEL_ZOO
+from payload import MYSTERY_PAYLOAD, NUM_EICAR_LOCATIONS, NUM_MYSTERY_LOCATIONS, PAYLOAD
+from scan import STRIDE_BYTES, THRESHOLD, WINDOW_BYTES, scan_model
+from tamper import multi_tamper
 
-st.set_page_config(page_title="KAVACH", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="KAVACH", page_icon="\U0001F6E1\uFE0F", layout="wide")
 
-st.markdown(
-    """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
-
-html, body, [class*="css"] {
-    font-family: 'IBM Plex Sans', sans-serif;
-}
-code, pre, .stCodeBlock, .stCode {
-    font-family: 'IBM Plex Mono', monospace !important;
-}
-
-.kavach-verdict {
-    padding: 1.0rem 1.3rem;
-    border-radius: 8px;
-    border: 1px solid;
-    margin: 0.4rem 0 1.2rem 0;
-    font-size: 1.05rem;
-    line-height: 1.5;
-}
-.kavach-verdict.clean {
-    background: #EAF6EF;
-    border-color: #2E7D4F;
-    color: #1E4E31;
-}
-.kavach-verdict.tampered {
-    background: #FCEBEA;
-    border-color: #C0392B;
-    color: #7A231A;
-}
-
-.kavach-finding {
-    background: #FFFFFF;
-    border: 1px solid #E3E7ED;
-    border-left: 4px solid #C0392B;
-    border-radius: 6px;
-    padding: 0.85rem 1.1rem;
-    margin-bottom: 0.7rem;
-    color: #12181F;
-    line-height: 1.55;
-}
-.kavach-finding.unknown {
-    border-left-color: #B8860B;
-}
-
-.kavach-tag {
-    display: inline-block;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    padding: 0.15rem 0.55rem;
-    border-radius: 4px;
-    margin-bottom: 0.45rem;
-}
-.kavach-tag.known {
-    background: #FCEBEA;
-    color: #7A231A;
-}
-.kavach-tag.unknown {
-    background: #FCF3D9;
-    color: #7A5B0A;
-}
-</style>
-""",
-    unsafe_allow_html=True,
+st.title("\U0001F6E1\uFE0F KAVACH \u2014 Antivirus for AI Models")
+st.caption(
+    "Detects, extracts, and disarms steganographic payloads hidden in neural network "
+    "weights \u2014 across every parameter tensor, at any bit offset, on any architecture, "
+    "without needing to know the payload's length in advance."
 )
 
-st.title("🛡️ KAVACH — Antivirus for AI Models")
-st.caption("Detects, extracts, and disarms steganographic payloads hidden in neural network weights.")
-
-with st.expander("How this works, in 20 seconds"):
+with st.expander("How this differs from pickle scanners like Fickling / ModelScan"):
     st.markdown(
-        """
-1. **Load** a real, pretrained ImageNet model — genuine trained weights, genuine floating-point noise.
-2. **Tamper** — two payloads get hidden in the least-significant bits of two different layers. Predictions barely move (~1e-7 value shift).
-3. **Scan** — every layer is swept for statistically anomalous LSB regions; hidden bytes are extracted and validated, not just flagged.
-4. **Disarm** — every flagged layer gets its LSBs randomized, destroying the payload for good, at the same negligible cost to accuracy.
-"""
+        "Tools like **Fickling** (Trail of Bits) and **ModelScan** (Protect AI) catch "
+        "*code-execution* attacks \u2014 a malicious pickle opcode that runs the moment the "
+        "file loads. They inspect the deserialization instructions, not the weight "
+        "**values**.\n\n"
+        "KAVACH targets a different, complementary surface: data smuggled inside the "
+        "numeric values of the weights themselves. A model tampered this way executes "
+        "zero unsafe code on load and passes a pickle-opcode scan cleanly \u2014 the payload "
+        "is invisible to that entire tool category. KAVACH is built for that specific "
+        "blind spot, not to replace those tools."
     )
 
 if "clean_model" not in st.session_state:
     st.session_state.clean_model = None
+    st.session_state.model_choice = None
     st.session_state.weights_meta = None
     st.session_state.tampered_model = None
     st.session_state.disarmed_model = None
     st.session_state.findings = None
+    st.session_state.layer_summary = None
     st.session_state.reverify = None
     st.session_state.predictions = {}
 
@@ -105,74 +48,81 @@ if st.sidebar.button("Reset demo"):
     st.session_state.clear()
     st.rerun()
 
-st.sidebar.caption("Kavach — Precision Care Challenge")
-
-
-def build_model():
-    return torchvision.models.resnet18(weights=None)
-
-
-def load_sample_images():
-    return sorted(
-        glob.glob("sample_images/*.jpg") + glob.glob("sample_images/*.jpeg") + glob.glob("sample_images/*.png")
+st.sidebar.markdown("---")
+model_choice = st.sidebar.selectbox(
+    "Demo model",
+    list(MODEL_ZOO.keys()),
+    disabled=st.session_state.clean_model is not None,
+    help="Locked once you click Load Baseline \u2014 hit Reset demo to switch.",
+)
+if "NOT FOR MEDICAL USE" in model_choice:
+    st.sidebar.caption(
+        "\u26a0\ufe0f Used here to prove architecture-agnostic detection on a real "
+        "clinical-imaging model. Not a diagnostic tool, not validated for medical use."
     )
 
-
-def predict_all(model, weights_meta, image_paths):
-    transforms = weights_meta.transforms()
-    categories = weights_meta.meta["categories"]
-    out = {}
-    for path in image_paths:
-        img = Image.open(path).convert("RGB")
-        batch = transforms(img).unsqueeze(0)
-        with torch.no_grad():
-            probs = torch.nn.functional.softmax(model(batch)[0], dim=0)
-        idx = int(torch.argmax(probs))
-        out[path] = (categories[idx], float(probs[idx]))
-    return out
-
+st.sidebar.markdown("---")
+st.sidebar.markdown(
+    f"**Detection parameters**\n\n"
+    f"- Window: {WINDOW_BYTES} bytes\n"
+    f"- Stride: {STRIDE_BYTES} bytes (overlapping)\n"
+    f"- Bit-phase alignments checked: 8\n"
+    f"- Printable-ratio threshold: {THRESHOLD:.0%}\n\n"
+    f"None of these are told the true payload length, offset, or which "
+    f"layer(s) \u2014 all of that is recovered, not assumed."
+)
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     if st.button("1. Load Baseline", use_container_width=True):
-        weights_meta = torchvision.models.ResNet18_Weights.DEFAULT
-        model = torchvision.models.resnet18(weights=weights_meta)
-        model.eval()
+        zoo = MODEL_ZOO[model_choice]
+        with st.spinner("Loading model..."):
+            model, weights_meta = zoo["load"]()
         st.session_state.clean_model = model
+        st.session_state.model_choice = model_choice
         st.session_state.weights_meta = weights_meta
-        images = load_sample_images()
+        images = zoo["sample_images"]()
         if images:
-            st.session_state.predictions["clean"] = predict_all(model, weights_meta, images)
+            st.session_state.predictions["clean"] = zoo["predict"](model, weights_meta, images)
 
 with col2:
     if st.button("2. Tamper", use_container_width=True, disabled=st.session_state.clean_model is None):
-        tampered_model = build_model()
-        tampered_model.load_state_dict(st.session_state.clean_model.state_dict())
-        tamper_model(tampered_model)
-        tampered_model.eval()
+        zoo = MODEL_ZOO[st.session_state.model_choice]
+        tampered_model = copy.deepcopy(st.session_state.clean_model)
+        multi_tamper(
+            tampered_model,
+            [(PAYLOAD, NUM_EICAR_LOCATIONS), (MYSTERY_PAYLOAD, NUM_MYSTERY_LOCATIONS)],
+        )
         st.session_state.tampered_model = tampered_model
-        images = load_sample_images()
+        images = zoo["sample_images"]()
         if images:
-            st.session_state.predictions["tampered"] = predict_all(
+            st.session_state.predictions["tampered"] = zoo["predict"](
                 tampered_model, st.session_state.weights_meta, images
             )
 
 with col3:
     if st.button("3. Scan", use_container_width=True, disabled=st.session_state.tampered_model is None):
-        st.session_state.findings = scan_model(st.session_state.tampered_model, payload_len_bytes=len(PAYLOAD))
+        with st.spinner("Scanning every layer across 8 bit-phase alignments..."):
+            findings, layer_summary = scan_model(st.session_state.tampered_model)
+        st.session_state.findings = findings
+        st.session_state.layer_summary = layer_summary
 
 with col4:
     if st.button("4. Disarm", use_container_width=True, disabled=not st.session_state.findings):
-        disarmed_model = build_model()
-        disarmed_model.load_state_dict(st.session_state.tampered_model.state_dict())
-        disarm_model(disarmed_model, st.session_state.findings)
-        disarmed_model.eval()
+        zoo = MODEL_ZOO[st.session_state.model_choice]
+        flagged_layers = sorted({f["layer"] for f in st.session_state.findings})
+        disarmed_model = copy.deepcopy(st.session_state.tampered_model)
+        params = dict(disarmed_model.named_parameters())
+        for layer_name in flagged_layers:
+            disarmed_w = disarm_layer(params[layer_name].detach().numpy())
+            params[layer_name].data = torch.from_numpy(disarmed_w.copy())
         st.session_state.disarmed_model = disarmed_model
-        st.session_state.reverify = scan_model(disarmed_model, payload_len_bytes=len(PAYLOAD))
-        images = load_sample_images()
+        reverify, _ = scan_model(disarmed_model)
+        st.session_state.reverify = reverify
+        images = zoo["sample_images"]()
         if images:
-            st.session_state.predictions["disarmed"] = predict_all(
+            st.session_state.predictions["disarmed"] = zoo["predict"](
                 disarmed_model, st.session_state.weights_meta, images
             )
 
@@ -180,48 +130,74 @@ st.divider()
 
 if st.session_state.findings is not None:
     st.subheader("Scan Report")
-    if not st.session_state.findings:
-        st.markdown(
-            '<div class="kavach-verdict clean">✅ <b>CLEAN</b> — no suspicious regions found.</div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            f'<div class="kavach-verdict tampered">🚨 <b>TAMPERED</b> — '
-            f"{len(st.session_state.findings)} hidden region(s) found and extracted.</div>",
-            unsafe_allow_html=True,
-        )
 
-    for f in st.session_state.findings:
-        known = f["matched_signature"] is not None
-        tag_class = "known" if known else "unknown"
-        tag_label = "KNOWN SIGNATURE MATCH" if known else "UNKNOWN — FLAGGED BY ANOMALY, NO SIGNATURE"
-        sig_line = f["matched_signature"] or "None — extracted on statistical grounds alone"
-        st.markdown(
-            f"""<div class="kavach-finding {tag_class}">
-<span class="kavach-tag {tag_class}">{tag_label}</span><br>
-<b>Layer:</b> <code>{f['layer']}</code> &nbsp;·&nbsp; <b>bit offset:</b> {f['offset']}<br>
-<b>Printable ratio:</b> {f['printable_ratio']:.1%} (natural weight noise sits ~37–43%)<br>
-<b>Matched signature:</b> {sig_line}
-</div>""",
-            unsafe_allow_html=True,
+    n_layers = len(st.session_state.layer_summary or {})
+    n_flagged = len(st.session_state.findings)
+    n_critical = sum(1 for f in st.session_state.findings if f["severity"] == "CRITICAL")
+    n_suspicious = n_flagged - n_critical
+    top_ratio = max([f["printable_ratio"] for f in st.session_state.findings], default=0.0)
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Parameter tensors scanned", n_layers)
+    m2.metric("CRITICAL (signature matched)", n_critical)
+    m3.metric("SUSPICIOUS (unknown, structured)", n_suspicious)
+    m4.metric("Highest printable ratio", f"{top_ratio:.0%}" if n_flagged else "\u2014")
+
+    if not st.session_state.findings:
+        st.success("CLEAN \u2014 no suspicious regions found across any layer, any bit-phase.")
+    else:
+        df = pd.DataFrame(
+            [
+                {
+                    "Layer": f["layer"],
+                    "Severity": f["severity"],
+                    "Bits": f"[{f['bit_start']}:{f['bit_end']}]",
+                    "Ratio": f"{f['printable_ratio']:.0%}",
+                    "Signature": f["matched_signature"] or "unknown \u2014 flagged on structure",
+                }
+                for f in st.session_state.findings
+            ]
         )
-        st.code(f["decoded_preview"])
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+        crit_example = next((f for f in st.session_state.findings if f["severity"] == "CRITICAL"), None)
+        susp_example = next((f for f in st.session_state.findings if f["severity"] == "SUSPICIOUS"), None)
+        with st.expander("See the actual extracted bytes (one CRITICAL + one SUSPICIOUS example)"):
+            if crit_example:
+                st.write(f"**CRITICAL** \u2014 `{crit_example['layer']}`, matched `{crit_example['matched_signature']}`")
+                st.code(crit_example["decoded_preview"])
+            if susp_example:
+                st.write(f"**SUSPICIOUS** \u2014 `{susp_example['layer']}`, no signature match")
+                st.code(susp_example["decoded_preview"])
+
+    if st.session_state.layer_summary:
+        st.write(
+            "**Peak printable ratio by layer** (top 15 \u2014 the planted layers spike, "
+            "everything else is the noise floor)"
+        )
+        top_layers = dict(
+            sorted(st.session_state.layer_summary.items(), key=lambda kv: kv[1], reverse=True)[:15]
+        )
+        st.bar_chart(pd.Series(top_layers, name="peak printable ratio"))
 
 if st.session_state.reverify is not None:
     st.subheader("Post-Disarm Re-Verification")
     if not st.session_state.reverify:
-        st.markdown(
-            '<div class="kavach-verdict clean">✅ Extraction now <b>FAILS</b> on every layer — '
-            "payloads destroyed, model is clean.</div>",
-            unsafe_allow_html=True,
+        n_disarmed = len(st.session_state.findings or [])
+        st.success(
+            f"Extraction now FAILS across every layer and bit-phase \u2014 all "
+            f"{n_disarmed} payload(s) destroyed, model is clean."
         )
     else:
-        st.warning(f"{len(st.session_state.reverify)} region(s) still detectable — disarm did not fully work.")
+        st.warning(f"{len(st.session_state.reverify)} payload(s) still detectable after disarm \u2014 something's wrong.")
+        for f in st.session_state.reverify:
+            st.write(f)
 
 if st.session_state.predictions:
     st.subheader("Does the model still work? (prediction agreement)")
-    for stage_name, preds in st.session_state.predictions.items():
-        st.markdown(f"**{stage_name}**")
-        for path, (cls, conf) in preds.items():
-            st.write(f"- {path}: {cls} ({conf:.1%})")
+    cols = st.columns(len(st.session_state.predictions))
+    for col, (stage_name, preds) in zip(cols, st.session_state.predictions.items()):
+        with col:
+            st.write(f"**{stage_name.capitalize()}**")
+            for path, result in preds.items():
+                st.write(f"- {os.path.basename(path)}: {result}")

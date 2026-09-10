@@ -13,26 +13,31 @@ def bits_to_bytes(bits: np.ndarray) -> bytes:
     return np.packbits(bits.astype(np.uint8)).tobytes()
 
 
-def embed_payload(weights: np.ndarray, payload: bytes) -> np.ndarray:
-    """Return a COPY of `weights` with `payload` hidden in the LSB of each float32."""
+def embed_payload(weights: np.ndarray, payload: bytes, start: int = 0) -> np.ndarray:
+    """Return a COPY of `weights` with `payload` hidden in the LSB of each float32,
+    starting at float-index `start` (lets tamper.py plant payloads at any offset,
+    not just index 0)."""
     flat = weights.flatten()
     as_int = flat.view(np.uint32).copy()
     bits = bytes_to_bits(payload)
-    if len(bits) > as_int.size:
-        raise ValueError(f"Payload needs {len(bits)} weight slots, this layer only has {as_int.size}.")
-    as_int[: len(bits)] = (as_int[: len(bits)] & ~np.uint32(1)) | bits.astype(np.uint32)
+    end = start + len(bits)
+    if end > as_int.size:
+        raise ValueError(f"Payload needs {len(bits)} weight slots at offset {start}, this layer only has {as_int.size}.")
+    as_int[start:end] = (as_int[start:end] & ~np.uint32(1)) | bits.astype(np.uint32)
     return as_int.view(np.float32).reshape(weights.shape)
 
 
-def extract_bits(weights: np.ndarray, num_bits: int) -> np.ndarray:
-    """Read back `num_bits` LSBs from the start of the flattened array."""
+def extract_bits(weights: np.ndarray, num_bits: int, start: int = 0) -> np.ndarray:
+    """Read back `num_bits` LSBs starting at float-index `start` in the
+    flattened array (lets scan.py probe every bit-phase alignment, not
+    just index 0)."""
     flat = weights.flatten()
     as_int = flat.view(np.uint32)
-    return (as_int[:num_bits] & np.uint32(1)).astype(np.uint8)
+    return (as_int[start:start + num_bits] & np.uint32(1)).astype(np.uint8)
 
 
-def extract_payload(weights: np.ndarray, num_bytes: int) -> bytes:
-    return bits_to_bytes(extract_bits(weights, num_bytes * 8))
+def extract_payload(weights: np.ndarray, num_bytes: int, start: int = 0) -> bytes:
+    return bits_to_bytes(extract_bits(weights, num_bytes * 8, start=start))
 
 
 def get_param_by_name(model, name: str):

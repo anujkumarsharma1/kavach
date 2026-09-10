@@ -19,6 +19,10 @@
     "class": "Egyptian cat",
     "confidence": 0.5329477787017822
   },
+  "sample_images\\Screenshot 2026-09-10 071121.png": {
+    "class": "ox",
+    "confidence": 0.6470487117767334
+  },
   "sample_images\\image.png": {
     "class": "Persian cat",
     "confidence": 0.2701779305934906
