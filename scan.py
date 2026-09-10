@@ -35,6 +35,7 @@ import numpy as np
 import torch
 
 from stego import extract_bits
+from tensor_access import get_array, iter_named_tensors
 
 # In production this list would be populated from a threat-intel /
 # YARA-style feed of known malicious string signatures. EICAR is used
@@ -123,17 +124,18 @@ def scan_layer(weights: np.ndarray, window_bytes=WINDOW_BYTES, stride_bytes=STRI
     return findings, layer_max_ratio
 
 
-def scan_model(model, window_bytes=WINDOW_BYTES, stride_bytes=STRIDE_BYTES, threshold=THRESHOLD):
-    """Scan every learnable parameter tensor in the model. Returns
-    (report, layer_summary): report is the flat list of findings across
-    all layers, layer_summary maps every scanned layer name -> the highest
-    printable-ratio seen anywhere in it (even layers with no finding --
-    this is what makes the "one layer spikes above the noise floor" chart
-    possible)."""
+def scan_model(model_or_state_dict, window_bytes=WINDOW_BYTES, stride_bytes=STRIDE_BYTES, threshold=THRESHOLD):
+    """Scan every learnable parameter tensor in the model, OR every tensor
+    in a plain state_dict (e.g. an uploaded .pt file with no nn.Module
+    wrapper). Returns (report, layer_summary): report is the flat list of
+    findings across all layers, layer_summary maps every scanned layer
+    name -> the highest printable-ratio seen anywhere in it (even layers
+    with no finding -- this is what makes the "one layer spikes above the
+    noise floor" chart possible)."""
     report = []
     layer_summary = {}
-    for name, param in model.named_parameters():
-        w = param.detach().numpy()
+    for name, param in iter_named_tensors(model_or_state_dict):
+        w = get_array(param)
         layer_findings, max_ratio = scan_layer(w, window_bytes, stride_bytes, threshold)
         layer_summary[name] = max_ratio
         for hit in layer_findings:

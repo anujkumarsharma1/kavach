@@ -16,3 +16,7 @@ pandas
 # Chest X-ray demo model (models_zoo.py) -- NOT FOR MEDICAL USE.
 torchxrayvision==1.5.4
 scikit-image==0.26.0
+
+# Live ModelScan comparison in the Scan tab (modelscan_check.py). Optional --
+# the app degrades gracefully with a clear message if this isn't installed.
+modelscan==0.8.8

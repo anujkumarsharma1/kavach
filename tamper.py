@@ -29,6 +29,7 @@ import torch
 from payload import MYSTERY_PAYLOAD, NUM_EICAR_LOCATIONS, NUM_MYSTERY_LOCATIONS, PAYLOAD
 from scan import BIT_PHASES, WINDOW_BYTES
 from stego import embed_payload, extract_payload
+from tensor_access import get_array, iter_named_tensors, set_tensor
 
 # scan_layer skips any bit-phase where the layer doesn't have a full
 # WINDOW_BYTES to look at (usable_bytes = (total_bits - phase) // 8). A
@@ -42,19 +43,22 @@ from stego import embed_payload, extract_payload
 MIN_SCAN_BITS = WINDOW_BYTES * 8 + max(BIT_PHASES)
 
 
-def multi_tamper(model, payload_plan, rng_seed=1337):
+def multi_tamper(model_or_state_dict, payload_plan, rng_seed=1337):
     """Embed each (payload, count) pair in `payload_plan` at `count`
     distinct layers, chosen only by which parameters are large enough to
     hold the payload -- never by name. Guaranteed disjoint: no layer is
     ever used for more than one payload, across the whole plan, so
     nothing can collide and corrupt another payload's bits.
 
+    Accepts either an nn.Module or a plain state_dict (e.g. an uploaded
+    .pt file) -- mutated in place either way via tensor_access.set_tensor.
+
     Returns a list of (layer_name, offset, payload_bytes) for every
     location actually used -- print or log this, you'll want it for the
     "here's exactly where we planted it" moment in the demo.
     """
     rng = np.random.default_rng(rng_seed)
-    all_params = list(model.named_parameters())
+    all_params = list(iter_named_tensors(model_or_state_dict))
     used_names = set()
     locations = []
 
@@ -75,11 +79,11 @@ def multi_tamper(model, payload_plan, rng_seed=1337):
         chosen_idx = rng.choice(len(candidates), size=n, replace=False)
         for idx in chosen_idx:
             name, p = candidates[idx]
-            w = p.detach().numpy()
+            w = get_array(p)
             max_start = w.size - len(payload) * 8
             offset = int(rng.integers(0, max_start + 1))
             tampered = embed_payload(w, payload, start=offset)
-            p.data = torch.from_numpy(tampered.copy())
+            set_tensor(model_or_state_dict, name, tampered)
             used_names.add(name)
             locations.append((name, offset, payload))
 
