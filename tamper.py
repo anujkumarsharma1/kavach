@@ -6,7 +6,7 @@ locations across MANY different layers in one pass (multi_tamper), not
 just one hit in fc.weight. Two things this proves that a single hit
 doesn't:
 
-1. It's a richer live demo -- "found 18 hits across the model" reads as
+1. It's a richer live demo -- "found several hits across the model" reads as
    a real scan, not a canned single-file check.
 2. It works on layers with completely different shapes and sizes without
    ever being told which layer to target -- it just asks each layer "are
@@ -27,7 +27,19 @@ import numpy as np
 import torch
 
 from payload import MYSTERY_PAYLOAD, NUM_EICAR_LOCATIONS, NUM_MYSTERY_LOCATIONS, PAYLOAD
+from scan import BIT_PHASES, WINDOW_BYTES
 from stego import embed_payload, extract_payload
+
+# scan_layer skips any bit-phase where the layer doesn't have a full
+# WINDOW_BYTES to look at (usable_bytes = (total_bits - phase) // 8). A
+# layer sized right at the payload's minimum can satisfy embed_payload's
+# length requirement yet still be too small for the scanner to see a full
+# window at the worst-case phase -- e.g. a 512-bit bn.bias exactly fits a
+# 56-byte payload but leaves only 63 usable bytes at phase 3, one short of
+# the 64-byte window, so that phase gets skipped and the payload goes
+# undetected even though it round-trips fine. Requiring every candidate
+# layer to clear the scanner's own worst-case window size closes that gap.
+MIN_SCAN_BITS = WINDOW_BYTES * 8 + max(BIT_PHASES)
 
 
 def multi_tamper(model, payload_plan, rng_seed=1337):
@@ -47,7 +59,7 @@ def multi_tamper(model, payload_plan, rng_seed=1337):
     locations = []
 
     for payload, count in payload_plan:
-        min_size = len(payload) * 8 + 64  # payload bits + margin
+        min_size = max(len(payload) * 8 + 64, MIN_SCAN_BITS)  # payload bits + margin, and scanner-detectable
         candidates = [
             (name, p) for name, p in all_params
             if name not in used_names and p.numel() >= min_size
