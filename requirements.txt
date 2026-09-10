@@ -13,7 +13,6 @@ streamlit
 pillow
 pandas
 
-# OPTIONAL -- only if you're doing the chest X-ray demo model (models_zoo.py).
-# Skip these two lines entirely if you're staying on ResNet18.
-# torchxrayvision
-# scikit-image
+# Chest X-ray demo model (models_zoo.py) -- NOT FOR MEDICAL USE.
+torchxrayvision==1.5.4
+scikit-image==0.26.0
