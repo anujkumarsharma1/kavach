@@ -25,7 +25,6 @@ zero misses, every time. See chat for the transcript.
 """
 import numpy as np
 import torch
-import torchvision
 
 from payload import MYSTERY_PAYLOAD, NUM_EICAR_LOCATIONS, NUM_MYSTERY_LOCATIONS, PAYLOAD
 from stego import embed_payload, extract_payload
@@ -76,8 +75,19 @@ def multi_tamper(model, payload_plan, rng_seed=1337):
 
 
 if __name__ == "__main__":
-    model = torchvision.models.resnet18(weights=None)
-    model.load_state_dict(torch.load("clean_model.pt", weights_only=True))
+    import argparse
+
+    from models_zoo import load_chest_xray, load_resnet18
+
+    parser = argparse.ArgumentParser(description="Plant hidden payloads into a demo model.")
+    parser.add_argument(
+        "--model", choices=["resnet18", "chest-xray"], default="resnet18",
+        help="Which architecture to tamper (default: resnet18). chest-xray requires "
+             "`pip install torchxrayvision scikit-image` -- see models_zoo.py.",
+    )
+    args = parser.parse_args()
+
+    model, _ = load_chest_xray() if args.model == "chest-xray" else load_resnet18()
     model.eval()
 
     locations = multi_tamper(
@@ -85,7 +95,10 @@ if __name__ == "__main__":
         [(PAYLOAD, NUM_EICAR_LOCATIONS), (MYSTERY_PAYLOAD, NUM_MYSTERY_LOCATIONS)],
     )
 
-    torch.save(model.state_dict(), "tampered_model.pt")
+    # Saved as the whole model object (not just a state_dict) so scan.py and
+    # disarm.py never need to be told which architecture produced this file --
+    # the file itself carries it.
+    torch.save(model, "tampered_model.pt")
     print(f"Planted {len(locations)} payloads across {len(locations)} distinct layers:")
     for name, offset, payload in locations:
         print(f"  {name}  offset={offset}  ({len(payload)} bytes, {'EICAR' if payload == PAYLOAD else 'mystery'})")

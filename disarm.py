@@ -5,7 +5,6 @@ embed sites now live, hardcoding one was a real bug, not a hypothetical).
 """
 import numpy as np
 import torch
-import torchvision
 
 from scan import scan_model
 from stego import get_param_by_name
@@ -35,14 +34,19 @@ def disarm_model(model, findings):
 
 
 if __name__ == "__main__":
-    model = torchvision.models.resnet18(weights=None)
-    model.load_state_dict(torch.load("tampered_model.pt", weights_only=True))
+    import sys
+
+    model_path = sys.argv[1] if len(sys.argv) > 1 else "tampered_model.pt"
+
+    # Loaded as the whole model object -- disarm.py works on whatever
+    # architecture the file actually contains, same as scan.py.
+    model = torch.load(model_path, weights_only=False)
     model.eval()
 
     findings, _ = scan_model(model)
     disarm_model(model, findings)
 
-    torch.save(model.state_dict(), "disarmed_model.pt")
+    torch.save(model, "disarmed_model.pt")
     print(f"Disarmed {len({f['layer'] for f in findings})} flagged layer(s).")
     print("Saved disarmed_model.pt.")
 

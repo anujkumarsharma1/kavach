@@ -33,7 +33,6 @@ edge cases -- which is exactly the gap between "detects malware" and
 """
 import numpy as np
 import torch
-import torchvision
 
 from stego import extract_bits
 
@@ -156,8 +155,9 @@ if __name__ == "__main__":
     import sys
 
     model_path = sys.argv[1] if len(sys.argv) > 1 else "tampered_model.pt"
-    model = torchvision.models.resnet18(weights=None)
-    model.load_state_dict(torch.load(model_path, weights_only=True))
+    # Loaded as the whole model object (tamper.py saves it that way) --
+    # scan.py works on whatever architecture the file actually contains.
+    model = torch.load(model_path, weights_only=False)
     model.eval()
 
     findings, layer_summary = scan_model(model)
