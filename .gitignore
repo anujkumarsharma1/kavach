@@ -5,3 +5,4 @@ __pycache__/
 *.pt
 sample_images/
 .streamlit/
+PRESENTATION_SCRIPT.md

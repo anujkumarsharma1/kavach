@@ -71,3 +71,4 @@ def run_modelscan(model_or_state_dict, timeout=30):
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
+
