@@ -113,6 +113,7 @@ def sample_images_chest_xray():
     )
 
 
+
 MODEL_ZOO = {
     "ImageNet ResNet18 (torchvision)": {
         "load": load_resnet18,
