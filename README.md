@@ -1,271 +1,78 @@
-# KAVACH — Antivirus for AI Models
+# KAVACH
 
-> Built for the **Precision Care Hackathon**. We did not place / did not move
-> forward past this round. Development is stopped as of **16 Sep 2026**. This
-> README is a retrospective write-up of what the project is, how it works,
-> what was planned, how much actually got built, and why we're stepping away
-> from it. The code is left as-is — untouched, verified working — as a
-> record and in case it's ever picked up again.
+A scanner that finds data hidden inside the numeric weights of a PyTorch model file, where pickle-based scanners like ModelScan do not look, and then destroys it.
 
----
+**Status:** working demo. Built for the Precision Care Hackathon, 2026. Development stopped on 16 Sep 2026.
 
-## 1. What is this?
+## What it does
+Every weight in a model is a float32. Overwriting only its least-significant bit changes the value by about 1e-7, so an attacker can hide any byte string (a malware signature, credentials, a C2 config) across thousands of weights. The model still loads and predicts normally. Tools like ModelScan and Fickling check whether loading the file can execute code, so a payload stored in weight values passes them clean.
 
-AI model files (`.pt`, `.pth`, etc.) are, underneath everything, just huge
-arrays of numbers — millions of float32 weights a network learned during
-training. **KAVACH is built around a specific, under-appreciated attack on
-those files**: you can hide an arbitrary secret (a malware signature, stolen
-credentials, a C2 config, anything) inside the weights themselves, by
-flipping only the least-significant bit of each float you touch.
+KAVACH plants such payloads into a real pretrained model (`tamper.py`), scans every parameter tensor for them without knowing their content, length or position (`scan.py`), and scrambles the flagged layers' LSBs so the payload is gone (`disarm.py`). A Streamlit app runs the full Load → Tamper → Scan → Disarm cycle, puts ModelScan's verdict on the same file next to KAVACH's, and lets you upload your own `.pt` state_dict to scan.
 
-The value shift from flipping that one bit is about `0.0000002` — smaller
-than ordinary training noise. The model still loads fine, still predicts
-normally, still "looks" like an untouched file. But it's now secretly
-carrying a payload.
+## How it's built
+Python, NumPy, PyTorch, torchvision (ImageNet ResNet18), torchxrayvision (chest X-ray DenseNet121, used only as a second architecture, **not for medical use**), Streamlit, and optionally `modelscan` for the side-by-side comparison.
 
-**The blind spot this exploits:** every existing AI-model security scanner
-we found (Fickling, ModelScan, etc.) checks one thing — *can loading this
-file execute malicious code?* They inspect the pickle deserialization
-opcodes. None of them look at the actual numeric weight **values**. A
-payload hidden in the weights runs zero code on load, so it sails through
-that entire category of tool with a clean bill of health.
+Design decisions:
+- **Statistics, not signatures, for detection.** A 64-byte window slides over each layer's LSB stream in 8-byte steps, and a window is flagged when at least 75% of its bytes are printable ASCII. The code comments put trained-weight noise at about 37 to 43% printable. The known-signature list only decides whether a hit is labelled `CRITICAL` (signature matched) or `SUSPICIOUS` (anomalous, unknown). That is how it catches payloads it has never seen.
+- **All 8 bit phases are scanned.** A payload can start at any float index. Decoding from the wrong bit offset turns it into non-printable garbage, so each layer is scanned at all 8 alignments. The first version only scanned phase 0 and missed payloads planted at non-aligned offsets.
+- **No architecture is named in the detection code.** `tamper.py`, `scan.py` and `disarm.py` never refer to a layer by name. `tensor_access.py` gives the same interface over an `nn.Module` or a raw state_dict, and `models_zoo.py` is the only file that knows which model is loaded. Uploaded files are loaded with `torch.load(..., weights_only=True)` so a malicious pickle cannot execute through the app.
+- **Disarm is deliberately coarse.** It randomizes every LSB in a flagged layer, not only the flagged byte range, in case the payload extends past what the window reported. The change is the same size as the embedding itself.
 
-KAVACH is "antivirus for AI models" built specifically for that blind spot,
-as a **complement** to tools like ModelScan/Fickling, not a replacement:
+## How to run
+Tested on Windows during the hackathon; the commands below are the platform-neutral form.
 
-1. **Scan** — sweep every parameter tensor in a model and catch the
-   statistical fingerprint a hidden payload leaves behind, with zero prior
-   knowledge of what was hidden, how long it is, or exactly where it sits.
-2. **Disarm** — once something suspicious is found, scramble the flagged
-   region's LSBs enough to destroy the payload, while leaving the model's
-   real predictions essentially untouched.
+    git clone https://github.com/anujkumarsharma1/kavach && cd kavach
+    python -m venv venv
+    source venv/bin/activate            # Windows: venv\Scripts\activate
+    pip install -r requirements.txt
 
-It also ships its own "attack simulator" (`tamper.py`) that plants real
-payloads into a real pretrained model, so the whole hide → find → remove
-cycle can be demonstrated live, on demand, not just claimed on a slide.
+    python stego.py                      # hide/extract round-trip self-test (NumPy only)
+    python tamper.py --model resnet18    # plants 5 payloads -> tampered_model.pt
+    python scan.py tampered_model.pt     # finds them
+    python disarm.py tampered_model.pt   # destroys them -> disarmed_model.pt
+    python scan.py disarmed_model.pt     # confirms clean
 
----
+    python benchmark.py --trials 20      # detection-rate and false-positive benchmark
+    python -m streamlit run app.py       # full UI
 
-## 2. How it actually works
+Notes:
+- The first run downloads the ResNet18 weights from `download.pytorch.org`. The `chest-xray` option downloads torchxrayvision weights.
+- The ResNet18 prediction panel reads images from `sample_images/`, which is git-ignored. Add a few `.jpg` or `.png` files there. Chest X-ray samples are already in `chest_sample_images/`.
+- `*.pt` files are git-ignored; the commands above regenerate them.
+- The ModelScan panel needs the `modelscan` command on your PATH. Without it, the panel shows "not available" and the rest of the app keeps working.
 
-### Hiding data (`stego.py`)
-Every weight is a 32-bit IEEE-754 float. Reinterpreting its raw bits and
-overwriting only the last bit (the LSB) lets you smuggle one bit of
-arbitrary data per weight at a ~1e-7 value shift — far below normal
-training/quantization noise. String enough weights together and you can
-encode whole byte sequences. Payloads can start at *any* float index, not
-just index 0 — `stego.py` supports an arbitrary `start` offset.
+## What it measured
+| Check | Result | Source |
+|---|---|---|
+| Stego round-trip: max weight value shift | 2.38e-07 (round-trip OK) | `python stego.py`, 10,000 synthetic float32 weights (seed 0), NumPy 2.4.6, run 28 Sep 2026 |
+| Demo run, ResNet18: planted payloads detected | 5/5 (2 CRITICAL, 3 SUSPICIOUS); re-scan clean after disarm | `tamper.py` → `scan.py` → `disarm.py`, run 16 Sep 2026 |
+| Benchmark smoke run, ResNet18: payloads detected | 18/18 across 3 trials; 3/3 trials clean after disarm; ~12 s total | `benchmark.py --trials 3`, run 16 Sep 2026 |
+| Benchmark smoke run, ResNet18: false positives on the clean model | 0 findings | same run; see caveat below |
+| ModelScan on a tampered file | 0 issues ("clean") while KAVACH reported 5 findings | `modelscan_check.py`, run 16 Sep 2026 |
+| Chest X-ray DenseNet121 detection rate | not yet measured | |
 
-### Attacking (`tamper.py`)
-`multi_tamper` plants payloads across several layers in one pass, choosing
-candidate layers only by "is this tensor big enough to hold the payload and
-clear the scanner's own worst-case window size?" — **never** by hardcoded
-layer name. That's what makes the same attack/detection code portable
-across architectures. Each demo run plants two payload *types* at random,
-non-zero, non-byte-aligned offsets:
-- A known-signature EICAR antivirus test string (2 locations)
-- A "mystery" string not in any signature database (3 locations) — this is
-  what proves the detector isn't just doing a string search.
+Caveats:
+- 3 trials is a smoke test, not a detection rate. The next step is `python benchmark.py --model both --trials 20` with the output committed.
+- The clean-model check loads the same pretrained weights on every trial, so its 20 "clean scans" are one deterministic result repeated. It shows 0 false positives on one model, not a false-positive rate. Measuring a real rate needs many different clean models.
 
-### Finding it (`scan.py`)
-A sliding-window detector (64-byte window, 8-byte stride) measures what
-fraction of bytes in each window are printable ASCII. Random trained-weight
-noise is printable roughly 37–43% of the time by chance; a real hidden
-payload spikes that to 90–100%. The threshold is tuned to **75%**. Because a
-payload can start at any bit offset, not just a byte boundary, the scanner
-checks **all 8 possible bit-phase alignments** per layer — decoding from the
-wrong phase turns a real payload into garbage, so this was a real failure
-mode that had to be explicitly solved, not an edge case skipped over.
-Overlapping flagged windows get merged into single reported regions, then
-matched against a small known-signature list (`CRITICAL`) or reported as
-statistically anomalous but unmatched (`SUSPICIOUS`).
+## Limitations
+- **Short payloads get past it.** A flagged window needs 75% printable bytes, so a payload much shorter than about 40 bytes cannot raise a 64-byte window above the threshold. This follows from the window size, not from a bug.
+- **It only detects printable LSB payloads.** A payload that is encrypted or compressed (non-printable bytes), or hidden in higher bits, is not caught.
+- **The command-line scripts trust their input.** `scan.py` and `disarm.py` load files with `torch.load(..., weights_only=False)`, which executes the file's pickle code. Only the app's upload path uses `weights_only=True`. Do not run the CLI on a file you do not trust.
 
-### Cleaning it (`disarm.py`)
-Once a layer is flagged, `disarm_layer` randomizes **every** LSB across that
-entire layer (not just the exact flagged bytes — a deliberate safety margin
-in case the true payload extends past what one scan window reported), which
-destroys the payload at effectively zero cost to model accuracy, since it's
-touching the same class of bit-magnitude that hiding used in the first
-place.
+## Project layout
+    app.py              Streamlit UI: guided 4-step demo and file upload
+    stego.py            LSB embed/extract primitives
+    tamper.py           Attack simulator: plants payloads across layers
+    scan.py             Detector: sliding window over all 8 bit phases
+    disarm.py           Randomizes flagged layers' LSBs
+    benchmark.py        Randomized tamper/scan/disarm trials and clean-model scans
+    models_zoo.py       Shared load/predict/sample-images interface for both models
+    tensor_access.py    Same accessor for an nn.Module or a raw state_dict
+    modelscan_check.py  Runs the ModelScan CLI for the side-by-side comparison
+    payload.py          Demo payloads (EICAR test string and an unknown string)
+    get_baseline.py     Saves a clean ResNet18 and baseline predictions
+    FEATURES.md         Feature list and Q&A prep written during the hackathon
+    CLAUDE_CODE_BRIEF.md  Spec for the upload, benchmark and ModelScan features
 
-### Working on any architecture (`models_zoo.py`, `tensor_access.py`)
-- `models_zoo.py` exposes one shared `load` / `predict` / `sample_images`
-  interface behind a `MODEL_ZOO` dict, so none of `stego.py` / `scan.py` /
-  `tamper.py` / `disarm.py` ever reference a specific architecture. Two
-  models are wired in: **ImageNet ResNet18** (torchvision, the original demo
-  model) and a **chest X-ray DenseNet121** (torchxrayvision — a real,
-  independently-trained clinical-imaging model, used purely to prove
-  cross-architecture detection and clearly labeled **NOT FOR MEDICAL USE**
-  everywhere it appears).
-- `tensor_access.py` is a small shared accessor layer so every scan/tamper/
-  disarm function works identically whether given a live `nn.Module` or a
-  plain uploaded `state_dict` (`dict[str, Tensor]`) — one code path, not two.
-
-### The Streamlit app (`app.py`)
-A peach-and-white themed UI with a guided 4-step workflow: **Load
-Baseline → Tamper → Scan → Disarm**, plus:
-- A sidebar model picker (built-in demo models, or upload your own `.pt`
-  file).
-- A scan report tab: severity counts, a findings table, extracted-byte
-  previews, and a bar chart of peak printable ratio per layer.
-- A live side-by-side comparison against the real, independent `ModelScan`
-  CLI tool on the same file (`modelscan_check.py`) — this is the "ModelScan
-  says clean, KAVACH finds it" contrast made visible on one screen instead
-  of an alt-tab to a terminal.
-- Post-disarm re-verification confirming extraction now fails.
-- A predictions panel showing the model's real predictions on sample images
-  stay consistent across clean → tampered → disarmed.
-
----
-
-## 3. The original plan
-
-The MVP (steganographic hide/find/disarm on one model, ResNet18) came
-together first. With time left before the hackathon deadline, we wrote up a
-three-feature stretch-goal spec (`CLAUDE_CODE_BRIEF.md`) aimed squarely at
-the most obvious judge pushback — *"is this rigged to only work on your own
-demo model?"*:
-
-- **Feature A — Judges upload their own file.** Let anyone upload a `.pt`
-  state_dict and watch it get scanned live, using PyTorch's
-  `weights_only=True` safe-load mode so KAVACH can never itself become a
-  victim of the exact code-execution attack class it exists to catch.
-- **Feature B — A real detection-rate number.** An offline benchmark
-  (`benchmark.py`) running many randomized tamper → scan → disarm trials
-  plus a separate clean-only run, to replace "it worked when we tried it"
-  with an actual citable statistic for the deck.
-- **Feature C — Live ModelScan comparison inside the app**, instead of a
-  manual alt-tab to a terminal during the demo.
-
-Alongside the code, we planned the actual pitch: a tight 7-minute
-presentation script (`PRESENTATION_SCRIPT.md`) built around a live demo
-rather than slides, with a deliberate "physical moment" — handing the
-laptop to a judge and scanning *their* file live — as the centerpiece
-meant to kill the "is this rigged?" question before anyone could ask it.
-
----
-
-## 4. How far we actually got
-
-**All of it.** Every feature in the brief and the features doc got built
-and, as of this write-up, has been re-verified working end-to-end:
-
-| Piece | Status |
-|---|---|
-| Core stego hide/extract round-trip | ✅ Verified — self-test passes, ~2.4e-7 max value shift |
-| Tamper → Scan → Disarm → re-verify (ResNet18) | ✅ Verified — planted 5 payloads across 5 layers, all 5 detected (2 CRITICAL/signature-matched, 3 SUSPICIOUS/unknown), disarmed, re-scan comes back clean |
-| 8-bit-phase scanning (non-byte-aligned offsets) | ✅ Verified — payloads planted at random non-aligned offsets were still found |
-| Multi-architecture support (ResNet18 + chest X-ray DenseNet121) | ✅ Built, `models_zoo.py` shared interface in place |
-| Feature A — upload your own model file, safe-load only | ✅ Built (`tensor_access.py` generalization + upload UI in `app.py`) |
-| Feature B — detection-rate benchmark | ✅ Verified — a 3-trial smoke run just now: 18/18 payloads detected, 0 false positives across 20 clean scans, 3/3 fully disarmed, ~12s runtime |
-| Feature C — live ModelScan comparison in-app | ✅ Built and verified at the library level — a tampered file correctly comes back "0 issues / clean" from real ModelScan while KAVACH reports 5 hits, exactly the intended contrast |
-| Streamlit app boots and serves | ✅ Verified — starts cleanly, responds HTTP 200, no runtime errors |
-| Presentation script + judge Q&A prep | ✅ Written (`PRESENTATION_SCRIPT.md`, `FEATURES.md`) |
-
-**One local-environment-only wrinkle, not a code defect:** in the current
-Windows venv, the pip-installed `.exe` console-script launchers
-(`modelscan.exe`, and incidentally `streamlit.exe`/`pip.exe` too) fail
-silently with no output. This affects only the shell wrapper binaries, not
-the underlying packages — calling `modelscan`'s Python API directly, or
-launching Streamlit via `python -m streamlit run app.py`, both work exactly
-as intended (this is in fact how the app was relaunched and verified for
-this write-up). The in-app ModelScan comparison panel degrades to its
-already-designed "not available" fallback in this specific environment
-rather than crashing, which is the correct behavior it was built to have —
-it just means the live third-party-comparison panel needs the `modelscan`
-package's console script reinstalled/repaired locally (e.g.
-`pip install --force-reinstall modelscan`) to visually light up in the app
-itself, on this machine.
-
-In short: **the project works.** Every claim in `FEATURES.md`'s Q&A prep is
-backed by code that runs and produces the stated result today.
-
----
-
-## 5. Why we're not moving forward
-
-We didn't place in the Precision Care Hackathon, and the team is not
-continuing active development on KAVACH past this point. This isn't a
-verdict on whether the underlying idea holds up — the detection blind spot
-it targets is real, and the demo genuinely does what the pitch claims — it's
-a decision about where to spend time next, not a retraction of the work.
-Leaving this README as an accurate record so that if anyone (us included)
-revisits this later, the actual state of things doesn't have to be
-re-discovered from scratch.
-
-### Known, honest limitations (worth keeping in mind if this is ever picked back up)
-- **Short payloads can evade detection structurally.** Reliable detection
-  needs roughly 40+ bytes inside a 64-byte scan window to clear the 75%
-  printable-ratio threshold — a payload much shorter than that can sit
-  below the noise floor by design, not by bug.
-- **Disarm is coarse on purpose.** It randomizes an entire flagged layer's
-  LSBs, not just the exact flagged byte range — correct as a safety margin,
-  but it means "precision surgical removal" isn't actually the model here.
-- **The ModelScan comparison depends on the `modelscan` CLI being
-  correctly installed/callable** in whatever environment the app runs in —
-  see the wrinkle noted above.
-- **Not a general-purpose malware scanner.** It detects LSB-steganography
-  specifically; a different embedding scheme (e.g. more significant bits, a
-  different encoding) wasn't in scope and wouldn't be caught by this
-  detector as built.
-
-### If this were picked up again, the next moves we'd already identified
-(carried over from `FEATURES.md`'s own Q&A prep, since they're still
-accurate):
-- Raise sensitivity for very short payloads without reintroducing false
-  positives.
-- Compare an uploaded file against a known-good baseline hash, not just a
-  standalone scan.
-- Package the benchmark as a CI-style regression check that runs
-  automatically whenever detection logic changes.
-
----
-
-## 6. Running it yourself
-
-```bash
-# from this directory, using the project's venv one level up
-../venv/Scripts/python.exe -m pip install -r requirements.txt   # if not already installed
-
-# core pipeline, no UI
-../venv/Scripts/python.exe tamper.py --model resnet18   # plants payloads -> tampered_model.pt
-../venv/Scripts/python.exe scan.py tampered_model.pt     # finds them
-../venv/Scripts/python.exe disarm.py tampered_model.pt   # removes them -> disarmed_model.pt
-../venv/Scripts/python.exe scan.py disarmed_model.pt     # confirms clean
-
-# citable detection-rate number
-../venv/Scripts/python.exe benchmark.py --trials 20
-
-# the full app
-../venv/Scripts/python.exe -m streamlit run app.py
-```
-
-`*.pt` model files are git-ignored — running the commands above regenerates
-them locally, nothing is lost by not committing them.
-
----
-
-## 7. Project layout
-
-```
-app.py                  Streamlit UI — the 4-step guided demo + upload flow
-stego.py                LSB embed/extract primitives
-tamper.py                Attack simulator — plants payloads across layers
-scan.py                  Detector — sliding-window, 8-bit-phase scan
-disarm.py                Cleaner — randomizes flagged layers' LSBs
-models_zoo.py             Shared load/predict/sample_images interface, 2 architectures
-tensor_access.py          Generic accessor so code works on nn.Module or raw state_dict
-modelscan_check.py        Runs the real ModelScan CLI for live comparison
-benchmark.py              Offline randomized-trial detection-rate benchmark
-payload.py                 Demo payload definitions (EICAR string + mystery string)
-get_baseline.py            Downloads ResNet18, saves clean_model.pt baseline
-CLAUDE_CODE_BRIEF.md      Spec for the three stretch features (upload / benchmark / ModelScan UI)
-FEATURES.md                Full feature list + judge Q&A prep, written during the hackathon
-PRESENTATION_SCRIPT.md    Timed 7-minute pitch script
-```
-
----
-
-*Not for medical use. The chest X-ray model is included solely to prove
-cross-architecture detection on a real, independently-trained network — it
-is not validated and must not be used for any diagnostic purpose.*
+*Not for medical use. The chest X-ray model is included only to show that detection works on a second, independently trained architecture. It is not validated for any diagnostic purpose.*
