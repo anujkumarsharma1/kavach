@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kavach: find strings hidden in model weights</title>
+  <meta name="description" content="Scan PyTorch and safetensors model files for text hidden in the lowest bit of their weights. Runs in your browser; the file never leaves your device." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 5 7v8c0 7 5 12 11 14 6-2 11-7 11-14V7z' fill='%23B4441C'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="./">Kavach</a>
+    <nav><a href="#how">How it works</a><a href="https://github.com/anujkumarsharma1/kavach">Source</a></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Find what's hidden<br />inside a model file.</h1>
+      <p class="lede">Kavach reads every weight in a PyTorch or safetensors file and looks for text tucked into the lowest bit of each number, where pickle scanners don't look. Your file never leaves this device.</p>
+    </section>
+
+    <section id="drop" class="card drop" aria-labelledby="drop-title">
+      <div class="drop-inner" id="dropzone">
+        <h2 id="drop-title">Scan a model</h2>
+        <p class="muted">.pt, .pth or .safetensors: state_dicts, checkpoints or whole models, in fp32, fp16 or bf16.</p>
+        <label class="pill" for="file">Choose a file</label>
+        <input id="file" type="file" accept=".pt,.pth,.safetensors" hidden />
+        <p class="muted small">or drop it here</p>
+      </div>
+      <div class="samples">
+        <span class="muted small">Try a sample</span>
+        <button class="chip" data-sample="clean-model.pt">Clean model</button>
+        <button class="chip" data-sample="infected-checkpoint.pt">Infected checkpoint</button>
+        <button class="chip" data-sample="infected-bf16.safetensors">Infected bf16 safetensors</button>
+        <button class="chip" data-sample="dangerous-pickle.pt">Dangerous pickle</button>
+      </div>
+    </section>
+
+    <section id="progress" class="card" hidden aria-live="polite">
+      <h2 id="progress-title">Scanning</h2>
+      <p class="muted" id="progress-file"></p>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="bar"><span></span></div>
+      <p class="muted small mono" id="progress-detail"></p>
+      <button class="ghost" id="cancel">Cancel</button>
+    </section>
+
+    <section id="result" hidden aria-live="polite"></section>
+
+    <section id="how" class="how">
+      <h2>How it works</h2>
+      <div class="grid3">
+        <article class="card step"><span class="num">1</span><h3>Read without running</h3><p>Files are parsed as data. The pickle inside a .pt file is walked opcode by opcode and nothing in it is executed. If it would call something like <code>os.system</code> when loaded, the verdict is Dangerous.</p></article>
+        <article class="card step"><span class="num">2</span><h3>Collect the lowest bits</h3><p>Every fp32, fp16 and bf16 weight gives up its least significant bit. Those bits are packed into bytes at all 8 possible alignments, because a hidden string can start anywhere.</p></article>
+        <article class="card step"><span class="num">3</span><h3>Look for text</h3><p>A 64-byte window slides in 8-byte steps. Ordinary weights produce noise that is roughly 37% printable. A window that is 75% printable or more is flagged, and one containing the EICAR test signature is marked critical.</p></article>
+      </div>
+      <article class="card fact">
+        <h3>Disarming doesn't change what the model predicts</h3>
+        <p>We hid 5 strings in an ImageNet ResNet18, then disarmed it. On all 3,925 Imagenette validation images, the tampered and the disarmed model gave the same prediction as the original for every image. Top-1 accuracy stayed at 66.83% in all three cases, and the largest change to any weight was 1.5&times;10<sup>&minus;8</sup>.</p>
+        <p class="muted small">Measured 14 Oct 2026 with <a href="https://github.com/anujkumarsharma1/kavach/blob/main/tools/measure_accuracy.py">tools/measure_accuracy.py</a>, torchvision ResNet18 IMAGENET1K_V1, <a href="https://github.com/fastai/imagenette">Imagenette</a> 160px validation split. Raw output: <a href="https://github.com/anujkumarsharma1/kavach/blob/main/tools/accuracy_result.json">accuracy_result.json</a>.</p>
+      </article>
+      <article class="card limits">
+        <h3>What it won't catch</h3>
+        <ul>
+          <li>Strings shorter than about 48 bytes, or encrypted or compressed ones, because they don't look like text.</li>
+          <li>Data hidden in higher bits, or in integer or quantised tensors, which are listed as skipped.</li>
+          <li>Pickle tricks outside its list of dangerous imports. Treat "Clean" as "no hidden text found", not as a guarantee that the file is safe.</li>
+        </ul>
+      </article>
+    </section>
+  </main>
+
+  <footer class="foot muted small">Kavach v2. Built for the Precision Care Hackathon 2026. Not a medical device.</footer>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

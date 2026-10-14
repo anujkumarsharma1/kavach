@@ -1,0 +1,14 @@
+{
+ "clean_top1": 66.83,
+ "tampered_top1": 66.83,
+ "disarmed_top1": 66.83,
+ "tampered_same_prediction_as_clean": 3925,
+ "disarmed_same_prediction_as_clean": 3925,
+ "images": 3925,
+ "payloads_planted": 5,
+ "findings_after_tamper": 5,
+ "findings_after_disarm": 0,
+ "max_weight_change_tampered": 1.4901161193847656e-08,
+ "torch": "2.14.0+cpu",
+ "measured": "2026-10-14, tools/measure_accuracy.py on imagenette2-160/val"
+}

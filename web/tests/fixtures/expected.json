@@ -1,0 +1,682 @@
+{
+ "clean-flat-fp32.pt": {
+  "findings": [],
+  "peaks": {
+   "conv1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "bn1.weight": 0.0,
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "conv2.weight": 0.515625,
+   "conv2.bias": 0.0,
+   "fc.weight": 0.578125,
+   "fc.bias": 0.0,
+   "head.weight": 0.0,
+   "head.bias": 0.0
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "infected-flat-fp32.pt": {
+  "findings": [
+   {
+    "layer": "conv2.weight",
+    "bit_start": 2631,
+    "bit_end": 3463,
+    "bit_phase": 7,
+    "printable_ratio": 0.984375,
+    "severity": "CRITICAL",
+    "matched_signature": "EICAR-STANDARD-ANTIVIRUS-TEST-FILE",
+    "decoded_hex": "9483489025a4054241cc002ba089223088006258354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482af7a2910164a080a408a4b184471f030000"
+   },
+   {
+    "layer": "fc.weight",
+    "bit_start": 18502,
+    "bit_end": 19334,
+    "bit_phase": 6,
+    "printable_ratio": 0.9375,
+    "severity": "SUSPICIOUS",
+    "matched_signature": null,
+    "decoded_hex": "479d60dee242717c26dbd4c0d386dd2e39d73e61f68851a77a7c8742796f75646f6e746b6e6f776d652d554e4b4e4f574e2d535452554354555245442d44454d4f2d5041594c4f41442d58595a5c5649ed324fc928b8593e5e9e39c24abc1ebf3c6138948bf944c1"
+   }
+  ],
+  "peaks": {
+   "conv1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "bn1.weight": 0.0,
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "conv2.weight": 0.984375,
+   "conv2.bias": 0.0,
+   "fc.weight": 0.9375,
+   "fc.bias": 0.0,
+   "head.weight": 0.0,
+   "head.bias": 0.0
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "clean-nested-fp32.pt": {
+  "findings": [],
+  "peaks": {
+   "model.state_dict.conv1.weight": 0.0,
+   "model.state_dict.conv1.bias": 0.0,
+   "model.state_dict.bn1.weight": 0.0,
+   "model.state_dict.bn1.bias": 0.0,
+   "model.state_dict.bn1.running_mean": 0.0,
+   "model.state_dict.bn1.running_var": 0.0,
+   "model.state_dict.conv2.weight": 0.515625,
+   "model.state_dict.conv2.bias": 0.0,
+   "model.state_dict.fc.weight": 0.578125,
+   "model.state_dict.fc.bias": 0.0,
+   "model.state_dict.head.weight": 0.0,
+   "model.state_dict.head.bias": 0.0,
+   "extra.0": 0.5625
+  },
+  "skipped": [
+   "model.state_dict.bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "infected-nested-fp32.pt": {
+  "findings": [
+   {
+    "layer": "model.state_dict.conv2.weight",
+    "bit_start": 2631,
+    "bit_end": 3463,
+    "bit_phase": 7,
+    "printable_ratio": 0.984375,
+    "severity": "CRITICAL",
+    "matched_signature": "EICAR-STANDARD-ANTIVIRUS-TEST-FILE",
+    "decoded_hex": "9483489025a4054241cc002ba089223088006258354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482af7a2910164a080a408a4b184471f030000"
+   },
+   {
+    "layer": "model.state_dict.fc.weight",
+    "bit_start": 18502,
+    "bit_end": 19334,
+    "bit_phase": 6,
+    "printable_ratio": 0.9375,
+    "severity": "SUSPICIOUS",
+    "matched_signature": null,
+    "decoded_hex": "479d60dee242717c26dbd4c0d386dd2e39d73e61f68851a77a7c8742796f75646f6e746b6e6f776d652d554e4b4e4f574e2d535452554354555245442d44454d4f2d5041594c4f41442d58595a5c5649ed324fc928b8593e5e9e39c24abc1ebf3c6138948bf944c1"
+   }
+  ],
+  "peaks": {
+   "model.state_dict.conv1.weight": 0.0,
+   "model.state_dict.conv1.bias": 0.0,
+   "model.state_dict.bn1.weight": 0.0,
+   "model.state_dict.bn1.bias": 0.0,
+   "model.state_dict.bn1.running_mean": 0.0,
+   "model.state_dict.bn1.running_var": 0.0,
+   "model.state_dict.conv2.weight": 0.984375,
+   "model.state_dict.conv2.bias": 0.0,
+   "model.state_dict.fc.weight": 0.9375,
+   "model.state_dict.fc.bias": 0.0,
+   "model.state_dict.head.weight": 0.0,
+   "model.state_dict.head.bias": 0.0,
+   "extra.0": 0.578125
+  },
+  "skipped": [
+   "model.state_dict.bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "clean-whole-fp32.pt": {
+  "findings": [],
+  "peaks": {
+   "conv1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "bn1.weight": 0.0,
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "conv2.weight": 0.515625,
+   "conv2.bias": 0.0,
+   "fc.weight": 0.578125,
+   "fc.bias": 0.0,
+   "head.weight": 0.0,
+   "head.bias": 0.0
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "infected-whole-fp32.pt": {
+  "findings": [
+   {
+    "layer": "conv2.weight",
+    "bit_start": 2631,
+    "bit_end": 3463,
+    "bit_phase": 7,
+    "printable_ratio": 0.984375,
+    "severity": "CRITICAL",
+    "matched_signature": "EICAR-STANDARD-ANTIVIRUS-TEST-FILE",
+    "decoded_hex": "9483489025a4054241cc002ba089223088006258354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482af7a2910164a080a408a4b184471f030000"
+   },
+   {
+    "layer": "fc.weight",
+    "bit_start": 18502,
+    "bit_end": 19334,
+    "bit_phase": 6,
+    "printable_ratio": 0.9375,
+    "severity": "SUSPICIOUS",
+    "matched_signature": null,
+    "decoded_hex": "479d60dee242717c26dbd4c0d386dd2e39d73e61f68851a77a7c8742796f75646f6e746b6e6f776d652d554e4b4e4f574e2d535452554354555245442d44454d4f2d5041594c4f41442d58595a5c5649ed324fc928b8593e5e9e39c24abc1ebf3c6138948bf944c1"
+   }
+  ],
+  "peaks": {
+   "conv1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "bn1.weight": 0.0,
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "conv2.weight": 0.984375,
+   "conv2.bias": 0.0,
+   "fc.weight": 0.9375,
+   "fc.bias": 0.0,
+   "head.weight": 0.0,
+   "head.bias": 0.0
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "clean-safetensors-fp32.safetensors": {
+  "findings": [],
+  "peaks": {
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "bn1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "conv1.weight": 0.0,
+   "conv2.bias": 0.0,
+   "conv2.weight": 0.515625,
+   "fc.bias": 0.0,
+   "fc.weight": 0.578125,
+   "head.bias": 0.0,
+   "head.weight": 0.0
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "infected-safetensors-fp32.safetensors": {
+  "findings": [
+   {
+    "layer": "conv2.weight",
+    "bit_start": 2631,
+    "bit_end": 3463,
+    "bit_phase": 7,
+    "printable_ratio": 0.984375,
+    "severity": "CRITICAL",
+    "matched_signature": "EICAR-STANDARD-ANTIVIRUS-TEST-FILE",
+    "decoded_hex": "9483489025a4054241cc002ba089223088006258354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482af7a2910164a080a408a4b184471f030000"
+   },
+   {
+    "layer": "fc.weight",
+    "bit_start": 18502,
+    "bit_end": 19334,
+    "bit_phase": 6,
+    "printable_ratio": 0.9375,
+    "severity": "SUSPICIOUS",
+    "matched_signature": null,
+    "decoded_hex": "479d60dee242717c26dbd4c0d386dd2e39d73e61f68851a77a7c8742796f75646f6e746b6e6f776d652d554e4b4e4f574e2d535452554354555245442d44454d4f2d5041594c4f41442d58595a5c5649ed324fc928b8593e5e9e39c24abc1ebf3c6138948bf944c1"
+   }
+  ],
+  "peaks": {
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "bn1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "conv1.weight": 0.0,
+   "conv2.bias": 0.0,
+   "conv2.weight": 0.984375,
+   "fc.bias": 0.0,
+   "fc.weight": 0.9375,
+   "head.bias": 0.0,
+   "head.weight": 0.0
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "clean-flat-fp16.pt": {
+  "findings": [],
+  "peaks": {
+   "conv1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "bn1.weight": 0.0,
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "conv2.weight": 0.5,
+   "conv2.bias": 0.0,
+   "fc.weight": 0.578125,
+   "fc.bias": 0.0,
+   "head.weight": 0.421875,
+   "head.bias": 0.0
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "infected-flat-fp16.pt": {
+  "findings": [
+   {
+    "layer": "conv2.weight",
+    "bit_start": 1031,
+    "bit_end": 1799,
+    "bit_phase": 7,
+    "printable_ratio": 0.875,
+    "severity": "SUSPICIOUS",
+    "matched_signature": null,
+    "decoded_hex": "560006f250cc698d4a2e46ecfad136b2969daede5336796f75646f6e746b6e6f776d652d554e4b4e4f574e2d535452554354555245442d44454d4f2d5041594c4f41442d58595a73f1368015c0b17832f398421adac5fa7db0da7463a55d9831"
+   },
+   {
+    "layer": "fc.weight",
+    "bit_start": 1539,
+    "bit_end": 2499,
+    "bit_phase": 3,
+    "printable_ratio": 1.0,
+    "severity": "CRITICAL",
+    "matched_signature": "EICAR-STANDARD-ANTIVIRUS-TEST-FILE",
+    "decoded_hex": "0ad62624c53356e7dd17fe897ecb9bc6affc34db3e5a5b524d1069e927217458354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482a033dfdaa696bd9737f8629f5bcb437a191cd4d3cd1"
+   }
+  ],
+  "peaks": {
+   "conv1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "bn1.weight": 0.0,
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "conv2.weight": 0.875,
+   "conv2.bias": 0.0,
+   "fc.weight": 1.0,
+   "fc.bias": 0.0,
+   "head.weight": 0.421875,
+   "head.bias": 0.0
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "clean-nested-fp16.pt": {
+  "findings": [],
+  "peaks": {
+   "model.state_dict.conv1.weight": 0.0,
+   "model.state_dict.conv1.bias": 0.0,
+   "model.state_dict.bn1.weight": 0.0,
+   "model.state_dict.bn1.bias": 0.0,
+   "model.state_dict.bn1.running_mean": 0.0,
+   "model.state_dict.bn1.running_var": 0.0,
+   "model.state_dict.conv2.weight": 0.5,
+   "model.state_dict.conv2.bias": 0.0,
+   "model.state_dict.fc.weight": 0.578125,
+   "model.state_dict.fc.bias": 0.0,
+   "model.state_dict.head.weight": 0.421875,
+   "model.state_dict.head.bias": 0.0,
+   "extra.0": 0.59375
+  },
+  "skipped": [
+   "model.state_dict.bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "infected-nested-fp16.pt": {
+  "findings": [
+   {
+    "layer": "model.state_dict.conv2.weight",
+    "bit_start": 1031,
+    "bit_end": 1799,
+    "bit_phase": 7,
+    "printable_ratio": 0.875,
+    "severity": "SUSPICIOUS",
+    "matched_signature": null,
+    "decoded_hex": "560006f250cc698d4a2e46ecfad136b2969daede5336796f75646f6e746b6e6f776d652d554e4b4e4f574e2d535452554354555245442d44454d4f2d5041594c4f41442d58595a73f1368015c0b17832f398421adac5fa7db0da7463a55d9831"
+   },
+   {
+    "layer": "model.state_dict.fc.weight",
+    "bit_start": 1539,
+    "bit_end": 2499,
+    "bit_phase": 3,
+    "printable_ratio": 1.0,
+    "severity": "CRITICAL",
+    "matched_signature": "EICAR-STANDARD-ANTIVIRUS-TEST-FILE",
+    "decoded_hex": "0ad62624c53356e7dd17fe897ecb9bc6affc34db3e5a5b524d1069e927217458354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482a033dfdaa696bd9737f8629f5bcb437a191cd4d3cd1"
+   }
+  ],
+  "peaks": {
+   "model.state_dict.conv1.weight": 0.0,
+   "model.state_dict.conv1.bias": 0.0,
+   "model.state_dict.bn1.weight": 0.0,
+   "model.state_dict.bn1.bias": 0.0,
+   "model.state_dict.bn1.running_mean": 0.0,
+   "model.state_dict.bn1.running_var": 0.0,
+   "model.state_dict.conv2.weight": 0.875,
+   "model.state_dict.conv2.bias": 0.0,
+   "model.state_dict.fc.weight": 1.0,
+   "model.state_dict.fc.bias": 0.0,
+   "model.state_dict.head.weight": 0.421875,
+   "model.state_dict.head.bias": 0.0,
+   "extra.0": 0.59375
+  },
+  "skipped": [
+   "model.state_dict.bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "clean-safetensors-fp16.safetensors": {
+  "findings": [],
+  "peaks": {
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "bn1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "conv1.weight": 0.0,
+   "conv2.bias": 0.0,
+   "conv2.weight": 0.5,
+   "fc.bias": 0.0,
+   "fc.weight": 0.578125,
+   "head.bias": 0.0,
+   "head.weight": 0.421875
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "infected-safetensors-fp16.safetensors": {
+  "findings": [
+   {
+    "layer": "conv2.weight",
+    "bit_start": 1031,
+    "bit_end": 1799,
+    "bit_phase": 7,
+    "printable_ratio": 0.875,
+    "severity": "SUSPICIOUS",
+    "matched_signature": null,
+    "decoded_hex": "560006f250cc698d4a2e46ecfad136b2969daede5336796f75646f6e746b6e6f776d652d554e4b4e4f574e2d535452554354555245442d44454d4f2d5041594c4f41442d58595a73f1368015c0b17832f398421adac5fa7db0da7463a55d9831"
+   },
+   {
+    "layer": "fc.weight",
+    "bit_start": 1539,
+    "bit_end": 2499,
+    "bit_phase": 3,
+    "printable_ratio": 1.0,
+    "severity": "CRITICAL",
+    "matched_signature": "EICAR-STANDARD-ANTIVIRUS-TEST-FILE",
+    "decoded_hex": "0ad62624c53356e7dd17fe897ecb9bc6affc34db3e5a5b524d1069e927217458354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482a033dfdaa696bd9737f8629f5bcb437a191cd4d3cd1"
+   }
+  ],
+  "peaks": {
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "bn1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "conv1.weight": 0.0,
+   "conv2.bias": 0.0,
+   "conv2.weight": 0.875,
+   "fc.bias": 0.0,
+   "fc.weight": 1.0,
+   "head.bias": 0.0,
+   "head.weight": 0.421875
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "clean-flat-bf16.pt": {
+  "findings": [],
+  "peaks": {
+   "conv1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "bn1.weight": 0.0,
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "conv2.weight": 0.546875,
+   "conv2.bias": 0.0,
+   "fc.weight": 0.625,
+   "fc.bias": 0.0,
+   "head.weight": 0.515625,
+   "head.bias": 0.0
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "infected-flat-bf16.pt": {
+  "findings": [
+   {
+    "layer": "conv2.weight",
+    "bit_start": 390,
+    "bit_end": 1158,
+    "bit_phase": 6,
+    "printable_ratio": 0.84375,
+    "severity": "SUSPICIOUS",
+    "matched_signature": null,
+    "decoded_hex": "fe21ff0c66b33276c61404696e0444d9801522ccd2796f75646f6e746b6e6f776d652d554e4b4e4f574e2d535452554354555245442d44454d4f2d5041594c4f41442d58595a8f4b30ed60abe23cb98cf312c9cd6b26726ab2075e6d0d3fe178"
+   },
+   {
+    "layer": "fc.weight",
+    "bit_start": 15942,
+    "bit_end": 16774,
+    "bit_phase": 6,
+    "printable_ratio": 1.0,
+    "severity": "CRITICAL",
+    "matched_signature": "EICAR-STANDARD-ANTIVIRUS-TEST-FILE",
+    "decoded_hex": "fcc54092be1fdc8151c2d6c488b0664a5c2613860958354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482a18a33a0cdffedc9c4c04183216e200"
+   }
+  ],
+  "peaks": {
+   "conv1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "bn1.weight": 0.0,
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "conv2.weight": 0.84375,
+   "conv2.bias": 0.0,
+   "fc.weight": 1.0,
+   "fc.bias": 0.0,
+   "head.weight": 0.515625,
+   "head.bias": 0.0
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "clean-nested-bf16.pt": {
+  "findings": [],
+  "peaks": {
+   "model.state_dict.conv1.weight": 0.0,
+   "model.state_dict.conv1.bias": 0.0,
+   "model.state_dict.bn1.weight": 0.0,
+   "model.state_dict.bn1.bias": 0.0,
+   "model.state_dict.bn1.running_mean": 0.0,
+   "model.state_dict.bn1.running_var": 0.0,
+   "model.state_dict.conv2.weight": 0.546875,
+   "model.state_dict.conv2.bias": 0.0,
+   "model.state_dict.fc.weight": 0.625,
+   "model.state_dict.fc.bias": 0.0,
+   "model.state_dict.head.weight": 0.515625,
+   "model.state_dict.head.bias": 0.0,
+   "extra.0": 0.59375
+  },
+  "skipped": [
+   "model.state_dict.bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "infected-nested-bf16.pt": {
+  "findings": [
+   {
+    "layer": "model.state_dict.conv2.weight",
+    "bit_start": 390,
+    "bit_end": 1158,
+    "bit_phase": 6,
+    "printable_ratio": 0.84375,
+    "severity": "SUSPICIOUS",
+    "matched_signature": null,
+    "decoded_hex": "fe21ff0c66b33276c61404696e0444d9801522ccd2796f75646f6e746b6e6f776d652d554e4b4e4f574e2d535452554354555245442d44454d4f2d5041594c4f41442d58595a8f4b30ed60abe23cb98cf312c9cd6b26726ab2075e6d0d3fe178"
+   },
+   {
+    "layer": "model.state_dict.fc.weight",
+    "bit_start": 15942,
+    "bit_end": 16774,
+    "bit_phase": 6,
+    "printable_ratio": 1.0,
+    "severity": "CRITICAL",
+    "matched_signature": "EICAR-STANDARD-ANTIVIRUS-TEST-FILE",
+    "decoded_hex": "fcc54092be1fdc8151c2d6c488b0664a5c2613860958354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482a18a33a0cdffedc9c4c04183216e200"
+   }
+  ],
+  "peaks": {
+   "model.state_dict.conv1.weight": 0.0,
+   "model.state_dict.conv1.bias": 0.0,
+   "model.state_dict.bn1.weight": 0.0,
+   "model.state_dict.bn1.bias": 0.0,
+   "model.state_dict.bn1.running_mean": 0.0,
+   "model.state_dict.bn1.running_var": 0.0,
+   "model.state_dict.conv2.weight": 0.84375,
+   "model.state_dict.conv2.bias": 0.0,
+   "model.state_dict.fc.weight": 1.0,
+   "model.state_dict.fc.bias": 0.0,
+   "model.state_dict.head.weight": 0.515625,
+   "model.state_dict.head.bias": 0.0,
+   "extra.0": 0.59375
+  },
+  "skipped": [
+   "model.state_dict.bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "clean-safetensors-bf16.safetensors": {
+  "findings": [],
+  "peaks": {
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "bn1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "conv1.weight": 0.0,
+   "conv2.bias": 0.0,
+   "conv2.weight": 0.546875,
+   "fc.bias": 0.0,
+   "fc.weight": 0.625,
+   "head.bias": 0.0,
+   "head.weight": 0.515625
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "infected-safetensors-bf16.safetensors": {
+  "findings": [
+   {
+    "layer": "conv2.weight",
+    "bit_start": 390,
+    "bit_end": 1158,
+    "bit_phase": 6,
+    "printable_ratio": 0.84375,
+    "severity": "SUSPICIOUS",
+    "matched_signature": null,
+    "decoded_hex": "fe21ff0c66b33276c61404696e0444d9801522ccd2796f75646f6e746b6e6f776d652d554e4b4e4f574e2d535452554354555245442d44454d4f2d5041594c4f41442d58595a8f4b30ed60abe23cb98cf312c9cd6b26726ab2075e6d0d3fe178"
+   },
+   {
+    "layer": "fc.weight",
+    "bit_start": 15942,
+    "bit_end": 16774,
+    "bit_phase": 6,
+    "printable_ratio": 1.0,
+    "severity": "CRITICAL",
+    "matched_signature": "EICAR-STANDARD-ANTIVIRUS-TEST-FILE",
+    "decoded_hex": "fcc54092be1fdc8151c2d6c488b0664a5c2613860958354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482a18a33a0cdffedc9c4c04183216e200"
+   }
+  ],
+  "peaks": {
+   "bn1.bias": 0.0,
+   "bn1.running_mean": 0.0,
+   "bn1.running_var": 0.0,
+   "bn1.weight": 0.0,
+   "conv1.bias": 0.0,
+   "conv1.weight": 0.0,
+   "conv2.bias": 0.0,
+   "conv2.weight": 0.84375,
+   "fc.bias": 0.0,
+   "fc.weight": 1.0,
+   "head.bias": 0.0,
+   "head.weight": 0.515625
+  },
+  "skipped": [
+   "bn1.num_batches_tracked"
+  ],
+  "dangerous": []
+ },
+ "dangerous.pt": {
+  "findings": [
+   {
+    "layer": "state_dict.conv2.weight",
+    "bit_start": 2245,
+    "bit_end": 3013,
+    "bit_phase": 5,
+    "printable_ratio": 0.875,
+    "severity": "SUSPICIOUS",
+    "matched_signature": null,
+    "decoded_hex": "656225c10649d8217a414a40270466cb04010148006c8ebc0203bb3a5ac5796f75646f6e746b6e6f776d652d554e4b4e4f574e2d535452554354555245442d44454d4f2d5041594c4f41442d58595a60042c802dcf08434e83ce98ec16300008"
+   },
+   {
+    "layer": "state_dict.fc.weight",
+    "bit_start": 25540,
+    "bit_end": 26436,
+    "bit_phase": 4,
+    "printable_ratio": 0.984375,
+    "severity": "CRITICAL",
+    "matched_signature": "EICAR-STANDARD-ANTIVIRUS-TEST-FILE",
+    "decoded_hex": "e2abbc0bbf91b5ba30f266f7022a6ace1f0858354f2150254041505b345c505a58353428505e2937434329377d2445494341522d5354414e444152442d414e544956495255532d544553542d46494c452124482b482a2d82569d2da7695ed644c50fb172d0867afe817a4c8d14dda25c"
+   }
+  ],
+  "peaks": {
+   "state_dict.conv1.weight": 0.0,
+   "state_dict.conv1.bias": 0.0,
+   "state_dict.bn1.weight": 0.0,
+   "state_dict.bn1.bias": 0.0,
+   "state_dict.bn1.running_mean": 0.0,
+   "state_dict.bn1.running_var": 0.0,
+   "state_dict.conv2.weight": 0.875,
+   "state_dict.conv2.bias": 0.0,
+   "state_dict.fc.weight": 0.984375,
+   "state_dict.fc.bias": 0.0,
+   "state_dict.head.weight": 0.0,
+   "state_dict.head.bias": 0.0
+  },
+  "skipped": [
+   "state_dict.bn1.num_batches_tracked"
+  ],
+  "dangerous": [
+   "posix.system"
+  ]
+ }
+}
